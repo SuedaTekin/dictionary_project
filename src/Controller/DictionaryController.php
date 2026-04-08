@@ -20,40 +20,85 @@ class DictionaryController extends AbstractController
 
         $results = [];
         $totalCount = 0;
+        $suggestion = null; 
+        $randomWord = null;
+
+        $conn = $doctrine->getConnection();
 
         if ($query) {
-            // Aranan kelimeyi büyük harfe çeviriyoruz
             $searchTerm = mb_strtoupper($query, 'UTF-8');
-            
-            $conn = $doctrine->getConnection();
 
-            /**
-             * 1. Sonuçları Getir
-             * Limit ve Offset değerlerini doğrudan SQL içine koyarak 
-             * 'Unknown column type' hatasından kurtuluyoruz.
-             */
-            $sql = "SELECT * FROM dictionary 
+            $sql = "SELECT MIN(id) as id, name, MIN(description) as description FROM dictionary 
                     WHERE BINARY name = :searchTerm 
-                    LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
-            
+                GROUP BY name";
+        
             $stmt = $conn->prepare($sql);
             $stmt->bindValue('searchTerm', $searchTerm);
             $results = $stmt->executeQuery()->fetchAllAssociative();
 
-            // 2. Toplam Sayıyı Getir
-            $sqlCount = 'SELECT COUNT(*) as total FROM dictionary WHERE BINARY name = :searchTerm';
-            $stmtCount = $conn->prepare($sqlCount);
-            $stmtCount->bindValue('searchTerm', $searchTerm);
-            $totalCount = $stmtCount->executeQuery()->fetchOne();
+            if (empty($results)) {
+            $allWordsSql = "SELECT DISTINCT name FROM dictionary";
+            $allWords = $conn->executeQuery($allWordsSql)->fetchFirstColumn();
+
+            $shortest = -1;
+            foreach ($allWords as $word) {
+                $lev = levenshtein($searchTerm, $word);
+                
+                if ($lev <= 3 && $lev > 0) { 
+                    if ($lev < $shortest || $shortest < 0) {
+                        $suggestion = $word;
+                        $shortest = $lev;
+                    }
+                }
+            }
         }
 
-        $totalPages = ceil($totalCount / $limit);
+        foreach ($results as &$item) {
+            $item['description'] = preg_replace('/\(([^)]+)\)/', '<span class="word-info">($1)</span>', $item['description']);
+            $item['description'] = preg_replace('/(\d+\.)/', '<br>$1', $item['description']);
+            $item['description'] = preg_replace('/^<br>/', '', $item['description']);
+        }
 
-        return $this->render('dictionary/results.html.twig', [
-            'results' => $results,
-            'query' => $query,
-            'currentPage' => $page,
-            'totalPages' => $totalPages,
-        ]);
+        $sqlCount = 'SELECT COUNT(DISTINCT name) as total FROM dictionary WHERE BINARY name = :searchTerm';
+        $stmtCount = $conn->prepare($sqlCount);
+        $stmtCount->bindValue('searchTerm', $searchTerm);
+        $totalCount = $stmtCount->executeQuery()->fetchOne();
+        
+    } else {
+        $sqlRandom = "SELECT name, description FROM dictionary ORDER BY RAND() LIMIT 1";
+        $randomWord = $conn->executeQuery($sqlRandom)->fetchAssociative();
+        
+        if ($randomWord) {
+            $randomWord['description'] = preg_replace('/\(([^)]+)\)/', '<span class="word-info">($1)</span>', $randomWord['description']);
+            $randomWord['description'] = preg_replace('/(\d+\.)/', '<br>$1', $randomWord['description']);
+        }
+    }
+
+    return $this->render('dictionary/results.html.twig', [
+        'results' => array_slice($results, $offset, $limit),
+        'query' => $query,
+        'suggestion' => $suggestion,
+        'randomWord' => $randomWord,
+        'currentPage' => $page,
+        'totalPages' => ceil($totalCount / $limit),
+    ]);
+}
+
+    #[Route('/suggest', name: 'app_dictionary_suggest')]
+    public function suggest(Request $request, ManagerRegistry $doctrine): Response
+    {
+        $query = $request->query->get('q', '');
+        $suggestions = [];
+
+        if (mb_strlen($query, 'UTF-8') >= 1) { 
+            $searchTerm = mb_strtoupper($query, 'UTF-8');
+            $conn = $doctrine->getConnection();
+            $sql = "SELECT DISTINCT name FROM dictionary WHERE BINARY name LIKE :searchTerm LIMIT 10";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindValue('searchTerm', $searchTerm . '%');
+            $suggestions = $stmt->executeQuery()->fetchFirstColumn();
+        }
+
+        return $this->json($suggestions);
     }
 }
