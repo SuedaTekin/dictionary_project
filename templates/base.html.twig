@@ -7,33 +7,27 @@
         
         {# Bootstrap CSS #}
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        {# FontAwesome (İkonlar için) #}
+        {# Bootstrap Icons #}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+        {# FontAwesome #}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        {% block stylesheets %}
-        {% endblock %}
+        {% block stylesheets %}{% endblock %}
 
         {% block javascripts %}
-            {# Bootstrap JS #}
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         {% endblock %}
-
-        {% set frankenphpHotReload = app.request.server.get('FRANKENPHP_HOT_RELOAD') %}
-        {% if frankenphpHotReload %}
-        <meta name="frankenphp-hot-reload:url" content="{{ frankenphpHotReload }}">
-        <script src="https://cdn.jsdelivr.net/npm/idiomorph"></script>
-        <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
-        {% endif %}
     </head>
-    <body class="bg-light">
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-            <div class="container">
-                <a class="navbar-brand" href="{{ path('admin_dictionary_index') }}">Sözlük Admin</a>
-            </div>
-        </nav>
+    {# bg-light sınıfını sildik, yerine dinamik tema gelecek #}
+    <body>
+        {% block body %}{% endblock %}
 
-        <div class="container">
-            {% block body %}{% endblock %}
-        </div>
+        <script>
+            // Sayfa yüklendiğinde temayı kontrol et
+            const htmlElement = document.documentElement;
+            if (localStorage.getItem('theme') === 'dark') {
+                htmlElement.setAttribute('data-bs-theme', 'dark');
+            }
+        </script>
     </body>
 </html>

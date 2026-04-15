@@ -6,97 +6,51 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        :root {
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --text-color: #212529;
-            --header-bg: #2c3e50;
-            --border-color: #dee2e6;
-        }
-
-        [data-bs-theme="dark"] {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --header-bg: #000000;
-            --border-color: #333;
-        }
-
+        :root { --bg-color: #f8f9fa; --card-bg: #ffffff; --text-color: #212529; --header-bg: #2c3e50; --border-color: #dee2e6; }
+        [data-bs-theme="dark"] { --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0; --header-bg: #000000; --border-color: #333; }
         body { background-color: var(--bg-color); color: var(--text-color); transition: 0.3s; min-height: 100vh; }
         .card { background-color: var(--card-bg); color: var(--text-color); border-radius: 12px; }
-        
+        .top-buttons{ position: fixed; top:20px; right:20px; display:flex; gap:10px; z-index:10000; }
+        .circle-btn{ border-radius:40px; width:35px; height:35px; display:flex; align-items:center; justify-content:center; }
         .pagination .page-item.active .page-link { background-color: #198754 !important; border-color: #198754 !important; }
         .char-btn { background-color: #198754; border: none; color: white; font-weight: bold; width: 38px; height: 38px; margin-top: 5px; transition: 0.2s; }
         .char-btn:hover { background-color: #157347; transform: scale(1.1); }
         .word-info { color: #ffc107; font-weight: bold; }
-
         .btn-speak { cursor: pointer; color: #198754; font-size: 1.5rem; transition: 0.2s; border: none; background: none; padding: 0; margin-left: 10px; }
         .btn-speak:hover { color: #157347; transform: scale(1.2); }
-        #dark-mode-toggle { position: fixed; top: 20px; right: 20px; z-index: 10000; border-radius: 50px; }
-        #admin-panel-link {
-            position: fixed;
-            top: 20px;
-            right: 80px; /* Gece modu butonunun 60px solunda durur */
-            z-index: 10000;
-            border-radius: 50px;
-            background-color: var(--card-bg);
-            color: #198754;
-            border-color: #198754;
-        }
-
-        #admin-panel-link:hover {
-            background-color: #198754;
-            color: white;
-        }
-        /* Öneri Listesi Tasarımı */
-        #autocomplete-results {
-            position: absolute; top: 100%; left: 0; right: 0; z-index: 9999;
-            background: var(--card-bg); 
-            border: 1px solid var(--border-color); 
-            display: none;
-            max-height: 250px; overflow-y: auto; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            border-radius: 0 0 8px 8px;
-        }
-        .suggestion-item { 
-            padding: 12px 15px; 
-            cursor: pointer; 
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-color); /* Yazı rengi temaya göre değişir */
-            background-color: var(--card-bg);
-            transition: 0.2s;
-        }
-        .suggestion-item:hover { 
-            background-color: #198754; 
-            color: white !important; 
-        }
+        #autocomplete-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 9999; background: var(--card-bg); border: 1px solid var(--border-color); display: none; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 0 0 8px 8px; }
+        .suggestion-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-color); background-color: var(--card-bg); transition: 0.2s; }
+        .suggestion-item:hover { background-color: #198754; color: white !important; }
+        .gunun-kelimesi-card{ border:2px solid #198754; border-radius:16px; padding:20px; background:var(--card-bg); box-shadow:0 10px 25px rgba(0,0,0,0.08); transition:.3s; margin-bottom: 2rem; }
+        .flip-card { perspective: 1000px; cursor: pointer; width: 100%; height: 220px; }
+        .flip-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .flip-card.flip .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; }
+        .flip-card-back { transform: rotateY(180deg); }
+        .random-card { border-left:5px solid #198754; height:100%; display:flex; flex-direction:column; justify-content:center; }
         
-        /* Günün Kelimesi Özel Tasarım */
-        .random-card { border-left: 5px solid #198754 !important; }
-
-        /* Gece Modu İçin Kaydırma Çubuğu */
-        [data-bs-theme="dark"] ::-webkit-scrollbar { width: 8px; }
-        [data-bs-theme="dark"] ::-webkit-scrollbar-track { background: #1e1e1e; }
-        [data-bs-theme="dark"] ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        /* Yenileme Butonu Animasyonu */
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .bi-spin { display: inline-block; animation: spin 0.8s linear infinite; }
     </style>
 </head>
 <body>
 
-<button id="dark-mode-toggle" class="btn btn-outline-success shadow">
-    <i class="bi bi-moon-fill" id="mode-icon"></i>
-</button>
-<a href="{{ path('app_logout') }}" class="btn btn-outline-secondary shadow">
-    <i class="bi bi-gear-fill"></i>
-</a>
+<div class="top-buttons">
+    <button id="dark-mode-toggle" class="btn btn-outline-success shadow circle-btn">
+        <i class="bi bi-moon-fill" id="mode-icon"></i>
+    </button>
+    <a href="{{ path('admin_dictionary_index') }}" class="btn btn-outline-secondary shadow circle-btn">
+        <i class="bi bi-gear-fill"></i>
+    </a>
+</div>
 
 <div class="container mt-5">
-    <!-- Arama Paneli -->
     <div class="p-4 rounded shadow-sm text-white mb-4" style="background-color: var(--header-bg); position: relative;">
         <h2 class="mb-4"><i class="bi bi-journal-richtext"></i> Sözlükte Ara</h2>
         <form action="{{ path('app_dictionary_search') }}" method="GET" id="searchForm" autocomplete="off">
             <div class="input-group mb-2" style="position: relative;">
-                <input type="text" id="searchInput" name="q" class="form-control form-control-lg" 
-                       placeholder="Bir kelime arayın..." value="{{ query }}">
+                <input type="text" id="searchInput" name="q" class="form-control form-control-lg" placeholder="Bir kelime arayın..." value="{{ query }}">
                 <button class="btn btn-success px-4" type="submit">ARA</button>
                 <div id="autocomplete-results" class="list-group"></div>
             </div>
@@ -109,79 +63,83 @@
         </form>
     </div>
 
-    <div class="mt-4">
-        {# 1. GÜNÜN KELİMESİ #}
-        {% if randomWord and not query %}
-            <div class="card shadow-sm mb-5 random-card">
-                <div class="card-header bg-transparent border-0 pt-3">
-                    <span class="badge bg-success"><i class="bi bi-lightning-charge-fill"></i> GÜNÜN KELİMESİ</span>
-                </div>
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <h2 class="text-success fw-bold mb-0">{{ randomWord.name }}</h2>
-                        <button class="btn-speak" onclick="speakText('{{ randomWord.name }}')">
-                            <i class="bi bi-volume-up-fill"></i>
-                        </button>
-                    </div>
-                    <p class="lead">{{ randomWord.description|raw }}</p>
-                    <a href="{{ path('app_dictionary_search', {q: randomWord.name}) }}" class="btn btn-link text-success p-0 text-decoration-none fw-bold">
-                    </a>
-                </div>
-            </div>
-        {% endif %}
-    
-        {# 2. GELİŞMİŞ ÖNERİ MESAJI #}
-        {% if suggestion is defined and suggestion is not null %}
-            <div class="alert shadow-sm border-0 d-flex align-items-center mb-4" 
-                style="background-color: rgba(255, 193, 7, 0.1); border-left: 5px solid #ffc107 !important;">
-                <i class="bi bi-lightbulb-fill text-warning fs-3 me-3"></i>
-                <div>
-                    <div class="text-muted small fw-bold text-uppercase">Bunu mu demek istediniz?</div>
-                    <a href="{{ path('app_dictionary_search', {q: suggestion}) }}" 
-                        class="fw-bold text-decoration-none ms-1" 
-                        style="color: #d99100; font-size: 1.2rem;">
-                        {{ suggestion }} <i class="bi bi-chevron-right small"></i>
-                    </a>
-                </div>
-            </div>
-        {% endif %}
-
-        {# 3. ARAMA SONUÇLARI #}
-        {% if results is not empty %}
-            {% for item in results %}
-                <div class="card mb-3 shadow-sm border-0">
-                    <div class="card-body p-4">
-                        <div class="d-flex align-items-center mb-2">
-                            <h3 class="text-danger mb-0">{{ item.name }}</h3>
-                            <button class="btn-speak" onclick="speakText('{{ item.name }}')">
-                                <i class="bi bi-volume-up-fill"></i>
-                            </button>
+    {% if randomWord and not query %}
+        <div class="gunun-kelimesi-card">
+            <div class="flip-card" id="main-flip-card" onclick="this.classList.toggle('flip')">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front">
+                        <div class="card shadow-sm random-card text-center">
+                            <div class="card-header bg-transparent border-0 pt-3">
+                                <span class="badge bg-success"><i class="bi bi-lightning-charge-fill"></i> GÜNÜN KELİMESİ</span>
+                            </div>
+                            <div class="card-body p-4 position-relative">
+                                <h2 class="text-success fw-bold" id="random-word-name">{{ randomWord.name }}</h2>
+                                <p class="text-muted">Kartı tıklayarak anlamı gör</p>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-success position-absolute bottom-0 end-0 m-2" 
+                                        id="refresh-word-btn" title="Yeni Kelime Getir" onclick="event.stopPropagation(); refreshRandomWord();">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
                         </div>
-                        <p class="lead">{{ item.description|raw }}</p>
+                    </div>
+                    <div class="flip-card-back">
+                        <div class="card shadow-sm random-card">
+                            <div class="card-body p-4 text-center">
+                                <span class="badge bg-success mb-2">ANLAMI</span>
+                                <p class="lead" id="random-word-desc">{{ randomWord.description|raw }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            {% endfor %}
-
-            {# Sayfalama #}
-            {% if totalPages > 1 %}
-                <nav class="mt-4"><ul class="pagination justify-content-center">
-                    {% for i in 1..totalPages %}
-                        <li class="page-item {{ i == currentPage ? 'active' : '' }}">
-                            <a class="page-link" href="{{ path('app_dictionary_search', {q: query, page: i}) }}">{{ i }}</a>
-                        </li>
-                    {% endfor %}
-                </ul></nav>
-            {% endif %}
-        {% elseif query %}
-            <div class="alert alert-info border-0 shadow-sm">
-                <i class="bi bi-info-circle-fill"></i> "{{ query }}" için bir sonuç bulunamadı.
             </div>
-        {% endif %}
-    </div>
+        </div>
+    {% endif %}
+
+    {% if query %}
+        <div class="search-results">
+            <h4 class="mb-3">"{{ query }}" için sonuçlar:</h4>
+            {% if results is not empty %}
+                {% for item in results %}
+                    <div class="card mb-3 shadow-sm border-start border-success border-4">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <h5 class="card-title text-success fw-bold mb-0">{{ item.name }}</h5>
+                                <button class="btn-speak" onclick="speakText('{{ item.name }}')">
+                                    <i class="bi bi-volume-up-fill"></i>
+                                </button>
+                            </div>
+                            <hr>
+                            <p class="card-text fs-5">{{ item.description|raw }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                {% if totalPages > 1 %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% for i in 1..totalPages %}
+                                <li class="page-item {{ i == currentPage ? 'active' : '' }}">
+                                    <a class="page-link" href="{{ path('app_dictionary_search', {q: query, page: i}) }}">{{ i }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    Kelime bulunamadı. 
+                    {% if suggestion %}
+                        Bunu mu demek istediniz: <a href="{{ path('app_dictionary_search', {q: suggestion}) }}" class="fw-bold">{{ suggestion }}</a>?
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
 </div>
 
 <script>
-    // --- GECE MODU ---
+    // Dark Mode Ayarları
     const modeToggle = document.getElementById('dark-mode-toggle');
     const modeIcon = document.getElementById('mode-icon');
     const htmlElement = document.documentElement;
@@ -203,77 +161,81 @@
         }
     });
 
-    // --- SESLİ OKUMA ---
+    // Sesli Okuma
     function speakText(text) {
-        if (!window.speechSynthesis) { alert("Tarayıcınız sesli okumayı desteklemiyor."); return; }
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'tr-TR';
         window.speechSynthesis.speak(utterance);
     }
 
-    // --- AUTOCOMPLETE ---
-    const searchInput = document.getElementById('searchInput');
-    const resultsContainer = document.getElementById('autocomplete-results');
+    // Günün Kelimesini Yenile (AJAX)
+    function refreshRandomWord() {
+        const btn = document.getElementById('refresh-word-btn');
+        const icon = btn.querySelector('i');
+        const nameEl = document.getElementById('random-word-name');
+        const descEl = document.getElementById('random-word-desc');
+        const flipCard = document.getElementById('main-flip-card');
 
-    let timeout = null;
+        icon.classList.add('bi-spin');
 
-    searchInput.addEventListener('input', function() {
-        clearTimeout(timeout);
-
-        const val = this.value.trim();
-
-        if (val.length < 1) {
-            resultsContainer.style.display = 'none';
-            return;
-        }
-
-        timeout = setTimeout(async () => {
-            try {
-                const response = await fetch('/suggest?q=' + encodeURIComponent(val));
-                const suggestions = await response.json();
-
-                if (suggestions.length > 0) {
-                    resultsContainer.innerHTML = '';
-
-                    suggestions.forEach(text => {
-                        const div = document.createElement('div');
-                        div.classList.add('suggestion-item');
-                        div.textContent = text;
-
-                        div.onclick = () => {
-                            searchInput.value = text;
-                            resultsContainer.style.display = 'none';
-                            searchInput.form.submit();
-                        };
-
-                        resultsContainer.appendChild(div);
-                    });
-
-                    resultsContainer.style.display = 'block';
-                } else {
-                    resultsContainer.style.display = 'none';
+        fetch('/random-word')
+            .then(res => res.json())
+            .then(data => {
+                if (data.name) {
+                    // Kart arkadaysa öne çevir
+                    flipCard.classList.remove('flip');
+                    
+                    // İçeriği değiştir (Dönüş animasyonu bitimine yakın yapıyoruz)
+                    setTimeout(() => {
+                        nameEl.textContent = data.name;
+                        descEl.innerHTML = data.description;
+                    }, 200);
                 }
+            })
+            .catch(err => console.error('Hata:', err))
+            .finally(() => {
+                setTimeout(() => icon.classList.remove('bi-spin'), 500);
+            });
+    }
 
-            } catch (e) {
-                console.error("Autocomplete hata:", e);
-            }
-        }, 300); // debounce
-    });
-
-    // ÖZEL KARAKTER BUTONLARI
+    // Özel Karakter Butonları
     document.querySelectorAll('.char-btn').forEach(btn => {
         btn.onclick = () => {
-            searchInput.value += btn.textContent;
-            searchInput.focus();
-            searchInput.dispatchEvent(new Event('input'));
+            const input = document.getElementById('searchInput');
+            input.value += btn.textContent.trim();
+            input.focus();
         };
     });
 
-    document.onclick = (e) => {
-        if (e.target !== searchInput) {
-            resultsContainer.style.display = 'none';
-        }
-    };
+    // Otomatik Öneri (AJAX)
+    const searchInput = document.getElementById('searchInput');
+    const resultsDiv = document.getElementById('autocomplete-results');
+
+    searchInput.addEventListener('input', function() {
+        const q = this.value;
+        if (q.length < 2) { resultsDiv.style.display = 'none'; return; }
+
+        fetch(`/suggest?q=${q}`)
+            .then(res => res.json())
+            .then(data => {
+                resultsDiv.innerHTML = '';
+                if (data.length > 0) {
+                    data.forEach(word => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.textContent = word;
+                        item.onclick = () => {
+                            searchInput.value = word;
+                            document.getElementById('searchForm').submit();
+                        };
+                        resultsDiv.appendChild(item);
+                    });
+                    resultsDiv.style.display = 'block';
+                } else {
+                    resultsDiv.style.display = 'none';
+                }
+            });
+    });
 </script>
 </body>
 </html>

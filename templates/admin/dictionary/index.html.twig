@@ -8,6 +8,7 @@
 </button>
 
 <style>
+    /* 1. DEĞİŞKENLER VE ZORUNLU ARKA PLANLAR */
     :root { 
         --bg-color: #f8f9fa; 
         --card-bg: #ffffff; 
@@ -16,72 +17,73 @@
         --accent-green: #198754;
     }
 
-    /* İlk görseldeki o profesyonel karanlık mod tonları */
     [data-bs-theme="dark"] { 
-        --bg-color: #0b0e14;   /* Derin arka plan */
-        --card-bg: #161b22;    /* Kart rengi */
-        --text-color: #f0f6fc; 
-        --border-color: #30363d;
-        --accent-green: #10b981; 
+        --bg-color: #0b0e14 !important; 
+        --card-bg: #161b22 !important; 
+        --text-color: #f0f6fc !important; 
+        --border-color: #30363d !important;
+        --accent-green: #10b981 !important;
+    }
+
+    /* 2. TÜM SAYFAYI ZORLA BOYAMA (EN ÖNEMLİ KISIM) */
+    /* Sayfadaki tüm olası beyazlıkları karanlık modda öldürür */
+    [data-bs-theme="dark"], 
+    [data-bs-theme="dark"] body, 
+    [data-bs-theme="dark"] .container, 
+    [data-bs-theme="dark"] .container-fluid,
+    [data-bs-theme="dark"] main {
+        background-color: var(--bg-color) !important;
+        color: var(--text-color) !important;
     }
 
     body { 
         background-color: var(--bg-color); 
         color: var(--text-color); 
-        transition: background-color 0.3s ease, color 0.3s ease; 
+        transition: background-color 0.3s ease; 
         min-height: 100vh; 
     }
 
+    /* 3. KART VE TABLO TASARIMI */
     .card { 
-        background-color: var(--card-bg); 
-        color: var(--text-color); 
-        border: 1px solid var(--border-color);
+        background-color: var(--card-bg) !important; 
+        color: var(--text-color) !important; 
+        border: 1px solid var(--border-color) !important;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
 
-    /* Tablo Düzenlemeleri */
-    .table { color: var(--text-color); margin-bottom: 0; }
-    
-    [data-bs-theme="dark"] .table { 
-        --bs-table-bg: transparent; 
-        --bs-table-color: var(--text-color); 
-        --bs-table-border-color: var(--border-color);
+    .table { 
+        color: var(--text-color) !important; 
     }
 
-    /* Tablo başlığını ilk görseldeki gibi daha sade yapalım */
-    thead {
-        background-color: rgba(0,0,0,0.05);
-    }
-    
-    [data-bs-theme="dark"] thead {
-        background-color: #0d1117;
+    [data-bs-theme="dark"] .table td, 
+    [data-bs-theme="dark"] .table th {
+        background-color: transparent !important;
+        color: var(--text-color) !important;
+        border-color: var(--border-color) !important;
     }
 
-    [data-bs-theme="dark"] .table-hover tbody tr:hover {
-        background-color: rgba(255,255,255,0.03);
+    [data-bs-theme="dark"] thead th {
+        background-color: #0d1117 !important;
+        color: var(--accent-green) !important;
     }
 
-    /* Form elemanlarını görsellerdeki gibi koyulaştıralım */
-    .form-control {
-        background-color: var(--card-bg);
-        border: 1px solid var(--border-color);
-        color: var(--text-color);
-    }
-
+    /* 4. FORM VE SAYFALAMA */
     [data-bs-theme="dark"] .form-control {
-        background-color: #0d1117;
-    }
-
-    .pagination .page-link { 
-        background-color: var(--card-bg); 
-        color: var(--text-color); 
-        border-color: var(--border-color); 
+        background-color: #0d1117 !important;
+        color: white !important;
+        border-color: var(--border-color) !important;
     }
 
     .page-item.active .page-link { 
-        background-color: var(--accent-green); 
-        border-color: var(--accent-green); 
+        background-color: var(--accent-green) !important; 
+        border-color: var(--accent-green) !important; 
+    }
+    
+    [data-bs-theme="dark"] .page-link {
+        background-color: var(--card-bg) !important;
+        color: var(--text-color) !important;
+        border-color: var(--border-color) !important;
     }
 </style>
 
@@ -105,7 +107,7 @@
     </div>
 
     <div class="card shadow">
-        <div class="card-body p-0"> {# Kenarlardaki boşluğu tabloyla sıfırlayalım daha şık durur #}
+        <div class="card-body p-0">
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -133,37 +135,31 @@
         </div>
     </div>
 
-    {# SAYFALAMA ALANI #}
     {% if total_pages is defined and total_pages > 1 %}
     <div class="d-flex flex-column align-items-center mt-4">
         <nav>
             <ul class="pagination shadow-sm">
                 {% set search_param = app.request.query.get('search') ? '&search=' ~ app.request.query.get('search') : '' %}
-
                 {% if current_page > 1 %}
                     <li class="page-item"><a class="page-link" href="?page=1{{ search_param }}">« İlk</a></li>
                     <li class="page-item"><a class="page-link" href="?page={{ current_page - 1 }}{{ search_param }}">Geri</a></li>
                 {% endif %}
-
                 {% set start = current_page - 2 %}
                 {% set end = current_page + 2 %}
-                
                 {% if start < 1 %}{% set start = 1 %}{% endif %}
                 {% if end > total_pages %}{% set end = total_pages %}{% endif %}
-
                 {% for i in start..end %}
                     <li class="page-item {{ i == current_page ? 'active' : '' }}">
                         <a class="page-link" href="?page={{ i }}{{ search_param }}">{{ i }}</a>
                     </li>
                 {% endfor %}
-
                 {% if current_page < total_pages %}
                     <li class="page-item"><a class="page-link" href="?page={{ current_page + 1 }}{{ search_param }}">İleri</a></li>
                     <li class="page-item"><a class="page-link" href="?page={{ total_pages }}{{ search_param }}">Son »</a></li>
                 {% endif %}
             </ul>
         </nav>
-        <div class="text-muted small mt-2">
+        <div class="text-muted small mt-2 pb-5">
             Toplam <strong>{{ total_pages }}</strong> sayfa arasından <strong>{{ current_page }}</strong>. sayfayı görüntülüyorsunuz.
         </div>
     </div>
@@ -175,20 +171,28 @@
     const modeIcon = document.getElementById('mode-icon');
     const htmlElement = document.documentElement;
 
+    function updateIcon(theme) {
+        if (theme === 'dark') {
+            modeIcon.classList.replace('bi-moon-fill', 'bi-sun-fill');
+        } else {
+            modeIcon.classList.replace('bi-sun-fill', 'bi-moon-fill');
+        }
+    }
+
     if (localStorage.getItem('theme') === 'dark') {
         htmlElement.setAttribute('data-bs-theme', 'dark');
-        modeIcon.classList.replace('bi-moon-fill', 'bi-sun-fill');
+        updateIcon('dark');
     }
 
     modeToggle.addEventListener('click', () => {
         if (htmlElement.getAttribute('data-bs-theme') === 'dark') {
             htmlElement.removeAttribute('data-bs-theme');
-            modeIcon.classList.replace('bi-sun-fill', 'bi-moon-fill');
             localStorage.setItem('theme', 'light');
+            updateIcon('light');
         } else {
             htmlElement.setAttribute('data-bs-theme', 'dark');
-            modeIcon.classList.replace('bi-moon-fill', 'bi-sun-fill');
             localStorage.setItem('theme', 'dark');
+            updateIcon('dark');
         }
     });
 </script>

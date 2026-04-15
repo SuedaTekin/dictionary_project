@@ -18,7 +18,7 @@ class DictionaryController extends AbstractController
     {
         $query = $request->query->get('q');
         $page = $request->query->getInt('page', 1);
-        $limit = 2;
+        $limit = 5; 
         $offset = ($page - 1) * $limit;
 
         $results = [];
@@ -34,17 +34,18 @@ class DictionaryController extends AbstractController
 
             $qb = $repository->createQueryBuilder('d');
             $qb->select('MIN(d.id) as id', 'd.name', 'MIN(d.description) as description')
-               ->where('d.name = :searchTerm') 
-               ->setParameter('searchTerm', $searchTerm)
+               ->where('UPPER(d.name) LIKE :searchTerm')
+               ->setParameter('searchTerm', '%' . $searchTerm . '%')
                ->groupBy('d.name')
                ->setFirstResult($offset)
                ->setMaxResults($limit);
 
             $results = $qb->getQuery()->getArrayResult();
+
             $countQb = $repository->createQueryBuilder('d');
             $totalCount = $countQb->select('COUNT(DISTINCT d.name)')
-                                  ->where('d.name = :searchTerm')
-                                  ->setParameter('searchTerm', $searchTerm)
+                                  ->where('UPPER(d.name) LIKE :searchTerm')
+                                  ->setParameter('searchTerm', '%' . $searchTerm . '%')
                                   ->getQuery()
                                   ->getSingleScalarResult();
 
@@ -56,7 +57,7 @@ class DictionaryController extends AbstractController
 
                 $shortest = -1;
                 foreach ($allWords as $word) {
-                    $lev = levenshtein($searchTerm, $word);
+                    $lev = levenshtein($searchTerm, mb_strtoupper($word,'UTF-8'));
                     if ($lev <= 3 && $lev > 0) {
                         if ($lev < $shortest || $shortest < 0) {
                             $suggestion = $word;
@@ -70,6 +71,7 @@ class DictionaryController extends AbstractController
                 $item['description'] = $this->formatDescription($item['description']);
             }
         } else {
+            // İlk açılışta günün kelimesi
             $conn = $doctrine->getConnection();
             $sqlRandom = "SELECT name, description FROM dictionary ORDER BY RAND() LIMIT 1";
             $randomWord = $conn->executeQuery($sqlRandom)->fetchAssociative();
@@ -88,51 +90,61 @@ class DictionaryController extends AbstractController
             'totalPages' => ceil($totalCount / $limit),
         ]);
     }
+
+    #[Route('/random-word', name: 'app_dictionary_random_word', methods: ['GET'])]
+    public function getRandomWord(ManagerRegistry $doctrine): JsonResponse
+    {
+        $conn = $doctrine->getConnection();
+        $sqlRandom = "SELECT name, description FROM dictionary ORDER BY RAND() LIMIT 1";
+        $randomWord = $conn->executeQuery($sqlRandom)->fetchAssociative();
+
+        if ($randomWord) {
+            $randomWord['description'] = $this->formatDescription($randomWord['description']);
+            return $this->json($randomWord);
+        }
+
+        return $this->json(['error' => 'Kelime bulunamadı'], 404);
+    }
+
     #[Route('/autocomplete', name: 'app_autocomplete')]
     public function autocomplete(Request $request, DictionaryRepository $repo): JsonResponse
     {
         $query = $request->query->get('q');
+        if (!$query) return $this->json([]);
 
-        if (!$query) {
-            return $this->json([]);
-        }
+        $results = $repo->createQueryBuilder('d')
+            ->where('LOWER(d.name) LIKE LOWER(:query)')
+            ->setParameter('query', '%' . $query . '%')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
 
-        $results = $repo->findByPrefix($query);
-
-        $data = [];
-
-    foreach ($results as $item) {
-        $data[] = $item->getName();
+        $data = array_map(fn($item) => $item->getName(), $results);
+        return $this->json($data);
     }
 
-    return $this->json($data);
-}
     #[Route('/suggest', name: 'app_dictionary_suggest')]
-    public function suggest(Request $request, ManagerRegistry $doctrine): Response
+    public function suggest(Request $request, ManagerRegistry $doctrine): JsonResponse
     {
         $query = $request->query->get('q', '');
         $suggestions = [];
 
         if (mb_strlen($query, 'UTF-8') >= 1) {
-            $searchTerm = mb_strtoupper($query, 'UTF-8');
             $repository = $doctrine->getManager()->getRepository(Dictionary::class);
-
             $suggestions = $repository->createQueryBuilder('d')
                 ->select('DISTINCT d.name')
-                ->where('d.name LIKE :searchTerm')
-                ->setParameter('searchTerm', $searchTerm . '%')
+                ->where('LOWER(d.name) LIKE LOWER(:searchTerm)')
+                ->setParameter('searchTerm', '%' . $query . '%')
                 ->setMaxResults(10)
                 ->getQuery()
                 ->getSingleColumnResult();
         }
-
         return $this->json($suggestions);
     }
 
     private function formatDescription(?string $description): string
     {
         if (!$description) return '';
-
         $description = preg_replace('/\(([^)]+)\)/', '<span class="word-info">($1)</span>', $description);
         $description = preg_replace('/(\d+\.)/', '<br>$1', $description);
         return preg_replace('/^<br>/', '', $description);
