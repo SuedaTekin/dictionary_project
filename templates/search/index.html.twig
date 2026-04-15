@@ -1,0 +1,66 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Sözlükte Ara{% endblock %}
+
+{% block body %}
+<div class="card p-4 shadow-sm">
+
+    <h3 class="mb-3">🔍 Sözlükte Ara</h3>
+
+    <div style="position: relative;">
+        <input type="text" name="q" id="searchInput" class="form-control" placeholder="Kelime yaz...">
+
+        <ul id="suggestions" class="list-group mt-1"></ul>
+    </div>
+
+</div>
+
+<script>
+const input = document.getElementById("searchInput");
+const suggestions = document.getElementById("suggestions");
+
+let timeout = null;
+
+input.addEventListener("keyup", function () {
+    clearTimeout(timeout);
+
+    const query = this.value;
+
+    if (query.length === 0) {
+        suggestions.innerHTML = "";
+        return;
+    }
+
+    timeout = setTimeout(() => {
+        fetch(`/autocomplete?q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                suggestions.innerHTML = "";
+
+                data.forEach(item => {
+                    const li = document.createElement("li");
+                    li.classList.add("list-group-item");
+                    li.style.cursor = "pointer";
+                    li.textContent = item;
+
+                    li.addEventListener("click", () => {
+                        input.value = item;
+                        suggestions.innerHTML = "";
+                    });
+
+                    suggestions.appendChild(li);
+                });
+            });
+    }, 300);
+});
+</script>
+
+<style>
+#suggestions {
+    position: absolute;
+    width: 100%;
+    z-index: 1000;
+}
+</style>
+
+{% endblock %}

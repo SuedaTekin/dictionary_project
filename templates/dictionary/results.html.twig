@@ -33,7 +33,21 @@
         .btn-speak { cursor: pointer; color: #198754; font-size: 1.5rem; transition: 0.2s; border: none; background: none; padding: 0; margin-left: 10px; }
         .btn-speak:hover { color: #157347; transform: scale(1.2); }
         #dark-mode-toggle { position: fixed; top: 20px; right: 20px; z-index: 10000; border-radius: 50px; }
+        #admin-panel-link {
+            position: fixed;
+            top: 20px;
+            right: 80px; /* Gece modu butonunun 60px solunda durur */
+            z-index: 10000;
+            border-radius: 50px;
+            background-color: var(--card-bg);
+            color: #198754;
+            border-color: #198754;
+        }
 
+        #admin-panel-link:hover {
+            background-color: #198754;
+            color: white;
+        }
         /* Öneri Listesi Tasarımı */
         #autocomplete-results {
             position: absolute; top: 100%; left: 0; right: 0; z-index: 9999;
@@ -71,6 +85,9 @@
 <button id="dark-mode-toggle" class="btn btn-outline-success shadow">
     <i class="bi bi-moon-fill" id="mode-icon"></i>
 </button>
+<a href="{{ path('app_logout') }}" class="btn btn-outline-secondary shadow">
+    <i class="bi bi-gear-fill"></i>
+</a>
 
 <div class="container mt-5">
     <!-- Arama Paneli -->
@@ -108,11 +125,11 @@
                     </div>
                     <p class="lead">{{ randomWord.description|raw }}</p>
                     <a href="{{ path('app_dictionary_search', {q: randomWord.name}) }}" class="btn btn-link text-success p-0 text-decoration-none fw-bold">
-                        Daha fazla detay <i class="bi bi-arrow-right"></i>
                     </a>
                 </div>
             </div>
         {% endif %}
+    
         {# 2. GELİŞMİŞ ÖNERİ MESAJI #}
         {% if suggestion is defined and suggestion is not null %}
             <div class="alert shadow-sm border-0 d-flex align-items-center mb-4" 
@@ -198,24 +215,49 @@
     const searchInput = document.getElementById('searchInput');
     const resultsContainer = document.getElementById('autocomplete-results');
 
-    searchInput.addEventListener('input', async function() {
+    let timeout = null;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+
         const val = this.value.trim();
-        if (val.length < 1) { resultsContainer.style.display = 'none'; return; }
-        try {
-            const response = await fetch('/public/suggest?q=' + encodeURIComponent(val));
-            const suggestions = await response.json();
-            if (suggestions.length > 0) {
-                resultsContainer.innerHTML = '';
-                suggestions.forEach(text => {
-                    const div = document.createElement('div');
-                    div.classList.add('suggestion-item');
-                    div.textContent = text;
-                    div.onclick = () => { searchInput.value = text; resultsContainer.style.display = 'none'; searchInput.form.submit(); };
-                    resultsContainer.appendChild(div);
-                });
-                resultsContainer.style.display = 'block';
-            } else { resultsContainer.style.display = 'none'; }
-        } catch (e) { console.error(e); }
+
+        if (val.length < 1) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+
+        timeout = setTimeout(async () => {
+            try {
+                const response = await fetch('/suggest?q=' + encodeURIComponent(val));
+                const suggestions = await response.json();
+
+                if (suggestions.length > 0) {
+                    resultsContainer.innerHTML = '';
+
+                    suggestions.forEach(text => {
+                        const div = document.createElement('div');
+                        div.classList.add('suggestion-item');
+                        div.textContent = text;
+
+                        div.onclick = () => {
+                            searchInput.value = text;
+                            resultsContainer.style.display = 'none';
+                            searchInput.form.submit();
+                        };
+
+                        resultsContainer.appendChild(div);
+                    });
+
+                    resultsContainer.style.display = 'block';
+                } else {
+                    resultsContainer.style.display = 'none';
+                }
+
+            } catch (e) {
+                console.error("Autocomplete hata:", e);
+            }
+        }, 300); // debounce
     });
 
     // ÖZEL KARAKTER BUTONLARI
@@ -227,7 +269,11 @@
         };
     });
 
-    document.onclick = (e) => { if (e.target !== searchInput) resultsContainer.style.display = 'none'; };
+    document.onclick = (e) => {
+        if (e.target !== searchInput) {
+            resultsContainer.style.display = 'none';
+        }
+    };
 </script>
 </body>
 </html>

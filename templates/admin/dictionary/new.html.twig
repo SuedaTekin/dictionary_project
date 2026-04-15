@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">Yeni Kelime Ekle</h3>
+                </div>
+                <div class="card-body">
+                    {{ include('admin/dictionary/_form.html.twig') }}
+                    <hr>
+                    <a href="{{ path('admin_dictionary_index') }}" class="btn btn-secondary w-100">Listeye Dön</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

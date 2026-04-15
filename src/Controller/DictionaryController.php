@@ -7,98 +7,134 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Doctrine\Persistence\ManagerRegistry;
+use App\Entity\Dictionary; 
+use App\Repository\DictionaryRepository;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 class DictionaryController extends AbstractController
 {
-    #[Route('/search', name: 'app_dictionary_search')]
+    #[Route('/search', name: 'app_dictionary_search', methods: ['GET'])]
     public function search(Request $request, ManagerRegistry $doctrine): Response
     {
         $query = $request->query->get('q');
         $page = $request->query->getInt('page', 1);
-        $limit = 3;
+        $limit = 2;
         $offset = ($page - 1) * $limit;
 
         $results = [];
         $totalCount = 0;
-        $suggestion = null; 
+        $suggestion = null;
         $randomWord = null;
 
-        $conn = $doctrine->getConnection();
+        $entityManager = $doctrine->getManager();
+        $repository = $entityManager->getRepository(Dictionary::class);
 
         if ($query) {
             $searchTerm = mb_strtoupper($query, 'UTF-8');
 
-            $sql = "SELECT MIN(id) as id, name, MIN(description) as description FROM dictionary 
-                    WHERE BINARY name = :searchTerm 
-                GROUP BY name";
-        
-            $stmt = $conn->prepare($sql);
-            $stmt->bindValue('searchTerm', $searchTerm);
-            $results = $stmt->executeQuery()->fetchAllAssociative();
+            $qb = $repository->createQueryBuilder('d');
+            $qb->select('MIN(d.id) as id', 'd.name', 'MIN(d.description) as description')
+               ->where('d.name = :searchTerm') 
+               ->setParameter('searchTerm', $searchTerm)
+               ->groupBy('d.name')
+               ->setFirstResult($offset)
+               ->setMaxResults($limit);
+
+            $results = $qb->getQuery()->getArrayResult();
+            $countQb = $repository->createQueryBuilder('d');
+            $totalCount = $countQb->select('COUNT(DISTINCT d.name)')
+                                  ->where('d.name = :searchTerm')
+                                  ->setParameter('searchTerm', $searchTerm)
+                                  ->getQuery()
+                                  ->getSingleScalarResult();
 
             if (empty($results)) {
-            $allWordsSql = "SELECT DISTINCT name FROM dictionary";
-            $allWords = $conn->executeQuery($allWordsSql)->fetchFirstColumn();
+                $allWords = $repository->createQueryBuilder('d')
+                    ->select('DISTINCT d.name')
+                    ->getQuery()
+                    ->getSingleColumnResult();
 
-            $shortest = -1;
-            foreach ($allWords as $word) {
-                $lev = levenshtein($searchTerm, $word);
-                
-                if ($lev <= 3 && $lev > 0) { 
-                    if ($lev < $shortest || $shortest < 0) {
-                        $suggestion = $word;
-                        $shortest = $lev;
+                $shortest = -1;
+                foreach ($allWords as $word) {
+                    $lev = levenshtein($searchTerm, $word);
+                    if ($lev <= 3 && $lev > 0) {
+                        if ($lev < $shortest || $shortest < 0) {
+                            $suggestion = $word;
+                            $shortest = $lev;
+                        }
                     }
                 }
             }
+
+            foreach ($results as &$item) {
+                $item['description'] = $this->formatDescription($item['description']);
+            }
+        } else {
+            $conn = $doctrine->getConnection();
+            $sqlRandom = "SELECT name, description FROM dictionary ORDER BY RAND() LIMIT 1";
+            $randomWord = $conn->executeQuery($sqlRandom)->fetchAssociative();
+
+            if ($randomWord) {
+                $randomWord['description'] = $this->formatDescription($randomWord['description']);
+            }
         }
 
-        foreach ($results as &$item) {
-            $item['description'] = preg_replace('/\(([^)]+)\)/', '<span class="word-info">($1)</span>', $item['description']);
-            $item['description'] = preg_replace('/(\d+\.)/', '<br>$1', $item['description']);
-            $item['description'] = preg_replace('/^<br>/', '', $item['description']);
+        return $this->render('dictionary/results.html.twig', [
+            'results' => $results, 
+            'query' => $query,
+            'suggestion' => $suggestion,
+            'randomWord' => $randomWord,
+            'currentPage' => $page,
+            'totalPages' => ceil($totalCount / $limit),
+        ]);
+    }
+    #[Route('/autocomplete', name: 'app_autocomplete')]
+    public function autocomplete(Request $request, DictionaryRepository $repo): JsonResponse
+    {
+        $query = $request->query->get('q');
+
+        if (!$query) {
+            return $this->json([]);
         }
 
-        $sqlCount = 'SELECT COUNT(DISTINCT name) as total FROM dictionary WHERE BINARY name = :searchTerm';
-        $stmtCount = $conn->prepare($sqlCount);
-        $stmtCount->bindValue('searchTerm', $searchTerm);
-        $totalCount = $stmtCount->executeQuery()->fetchOne();
-        
-    } else {
-        $sqlRandom = "SELECT name, description FROM dictionary ORDER BY RAND() LIMIT 1";
-        $randomWord = $conn->executeQuery($sqlRandom)->fetchAssociative();
-        
-        if ($randomWord) {
-            $randomWord['description'] = preg_replace('/\(([^)]+)\)/', '<span class="word-info">($1)</span>', $randomWord['description']);
-            $randomWord['description'] = preg_replace('/(\d+\.)/', '<br>$1', $randomWord['description']);
-        }
+        $results = $repo->findByPrefix($query);
+
+        $data = [];
+
+    foreach ($results as $item) {
+        $data[] = $item->getName();
     }
 
-    return $this->render('dictionary/results.html.twig', [
-        'results' => array_slice($results, $offset, $limit),
-        'query' => $query,
-        'suggestion' => $suggestion,
-        'randomWord' => $randomWord,
-        'currentPage' => $page,
-        'totalPages' => ceil($totalCount / $limit),
-    ]);
+    return $this->json($data);
 }
-
     #[Route('/suggest', name: 'app_dictionary_suggest')]
     public function suggest(Request $request, ManagerRegistry $doctrine): Response
     {
         $query = $request->query->get('q', '');
         $suggestions = [];
 
-        if (mb_strlen($query, 'UTF-8') >= 1) { 
+        if (mb_strlen($query, 'UTF-8') >= 1) {
             $searchTerm = mb_strtoupper($query, 'UTF-8');
-            $conn = $doctrine->getConnection();
-            $sql = "SELECT DISTINCT name FROM dictionary WHERE BINARY name LIKE :searchTerm LIMIT 10";
-            $stmt = $conn->prepare($sql);
-            $stmt->bindValue('searchTerm', $searchTerm . '%');
-            $suggestions = $stmt->executeQuery()->fetchFirstColumn();
+            $repository = $doctrine->getManager()->getRepository(Dictionary::class);
+
+            $suggestions = $repository->createQueryBuilder('d')
+                ->select('DISTINCT d.name')
+                ->where('d.name LIKE :searchTerm')
+                ->setParameter('searchTerm', $searchTerm . '%')
+                ->setMaxResults(10)
+                ->getQuery()
+                ->getSingleColumnResult();
         }
 
         return $this->json($suggestions);
+    }
+
+    private function formatDescription(?string $description): string
+    {
+        if (!$description) return '';
+
+        $description = preg_replace('/\(([^)]+)\)/', '<span class="word-info">($1)</span>', $description);
+        $description = preg_replace('/(\d+\.)/', '<br>$1', $description);
+        return preg_replace('/^<br>/', '', $description);
     }
 }

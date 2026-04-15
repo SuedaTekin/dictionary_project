@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Kelime Düzenle{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <h2>Kelime Düzenle</h2>
+
+    {{ form_start(form) }}
+
+    <div class="mb-3">
+        {{ form_label(form.name) }}
+        {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.description) }}
+        {{ form_widget(form.description, {'attr': {'class': 'form-control'}}) }}
+    </div>
+
+    <button class="btn btn-success">Kaydet</button>
+
+    {{ form_end(form) }}
+</div>
+{% endblock %}

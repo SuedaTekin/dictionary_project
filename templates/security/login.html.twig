@@ -1,0 +1,44 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Giriş Yap{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-lg border-0" style="background-color: var(--card-bg); color: var(--text-color);">
+                <div class="card-header bg-success text-white text-center py-3">
+                    <h4 class="mb-0"><i class="bi bi-lock-fill"></i> Yönetici Girişi</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% if error %}
+                            <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="inputEmail" class="form-label">E-posta</label>
+                            <input type="email" value="{{ last_username }}" name="email" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="inputPassword" class="form-label">Şifre</label>
+                            <input type="password" name="password" id="inputPassword" class="form-control" autocomplete="current-password" required>
+                        </div>
+
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                        <button class="btn btn-success w-100 py-2 mt-3" type="submit">
+                            Giriş Yap
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <a href="{{ path('app_dictionary_search') }}" class="text-decoration-none text-success">
+                    <i class="bi bi-arrow-left"></i> Sözlüğe Dön
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

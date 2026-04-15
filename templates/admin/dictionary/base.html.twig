@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+</head>
+<body style="background:#1e1e2f; color:white;">
+
+    <nav style="padding:10px; background:#111;">
+        <a href="{{ path('admin_dictionary') }}">Kelime Listesi</a>
+        <a href="{{ path('app_home') }}">Ana Sayfa</a>
+    </nav>
+
+    <div class="container">
+        {% block body %}{% endblock %}
+    </div>
+
+</body>
+</html>

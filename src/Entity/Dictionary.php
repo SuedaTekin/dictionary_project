@@ -3,10 +3,13 @@
 namespace App\Entity;
 
 use App\Repository\DictionaryRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity; 
 
 #[ORM\Entity(repositoryClass: DictionaryRepository::class)]
-#[ORM\Table(name: "dictionary")] // Tablo adının küçük harf olduğundan emin olduk
+#[ORM\Table(name: "dictionary")]
+#[UniqueEntity(fields: ['name'], message: 'Bu kelime zaten sözlükte kayıtlı!')] 
 class Dictionary
 {
     #[ORM\Id]
@@ -14,11 +17,14 @@ class Dictionary
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(name: "name", length: 255)] // Veritabanındaki 'name' sütunuyla eşledik
+    #[ORM\Column(name: "name", length: 255, unique: true)] 
     private ?string $name = null;
 
-    #[ORM\Column(name: "description", type: "text")] // Veritabanındaki 'description' ile eşledik
+    #[ORM\Column(name: "description", type: "text")]
     private ?string $description = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $example_sentence = null;
 
     public function getId(): ?int { return $this->id; }
     
@@ -27,4 +33,15 @@ class Dictionary
 
     public function getDescription(): ?string { return $this->description; }
     public function setDescription(string $description): self { $this->description = $description; return $this; }
+
+    public function getExampleSentence(): ?string
+    {
+        return $this->example_sentence;
+    }
+
+    public function setExampleSentence(?string $example_sentence): static
+    {
+        $this->example_sentence = $example_sentence;
+        return $this;
+    }
 }

@@ -6,9 +6,6 @@ use App\Entity\Dictionary;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Dictionary>
- */
 class DictionaryRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -16,12 +13,33 @@ class DictionaryRepository extends ServiceEntityRepository
         parent::__construct($registry, Dictionary::class);
     }
 
-    public function searchByWord(string $word): array
+    public function findPaginated(int $page, int $limit, ?string $searchTerm = null): array
     {
-        return $this->createQueryBuilder('d')
-            ->andWhere('d.word LIKE :val')
-            ->setParameter('val', '%'.$word.'%')
+        $qb = $this->createQueryBuilder('d');
+
+        // Arama terimi varsa filtreyi uygula
+        if ($searchTerm !== null && $searchTerm !== '') {
+            $qb->andWhere('d.name LIKE :searchTerm OR d.description LIKE :searchTerm')
+               ->setParameter('searchTerm', '%' . $searchTerm . '%');
+        }
+
+        // Toplam sayıyı hesapla (Filtre dahil)
+        $totalQuery = clone $qb;
+        $total = $totalQuery->select('count(d.id)')
+            ->setFirstResult(0)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        // Verileri getir
+        $data = $qb->orderBy('d.id', 'ASC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return [
+            'total' => (int)$total,
+            'data' => $data
+        ];
     }
 }
